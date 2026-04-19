@@ -2784,7 +2784,6 @@ for i = 1,10 do
 		end
 	})
 end
-
 --// SERVICES
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -2795,6 +2794,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local JoinTime = tick()
+
+--// CACHE (FOR COPY SYSTEM)
+local StatsCache = {}
 
 --// GAME NAME
 local GameName = "Unknown"
@@ -2855,16 +2857,17 @@ local function FormatTime(seconds)
 	return string.format("%dd %02dh %02dm %02ds", d, h, m, s)
 end
 
---// ACCOUNT CREATION DATE
-local function GetFullJoinDate()
+--// STATIC ACCOUNT CREATION DATE (FIXED)
+local AccountCreationDate
+do
 	local accountAgeDays = LocalPlayer.AccountAge
 	local currentTime = os.time()
 	local creationTimestamp = currentTime - (accountAgeDays * 86400)
-	return os.date("%d %B %Y | %H:%M:%S", creationTimestamp)
+	AccountCreationDate = os.date("%d %B %Y", creationTimestamp)
 end
 
 --// CREATE TAB
-local StatsTab = Window:CreateTab("Stats", "bar-chart")
+local StatsTab = Window:CreateTab("Stats", 4483362458)
 
 --========================
 -- USER SECTION
@@ -2873,7 +2876,6 @@ StatsTab:CreateSection("User Information")
 
 local UserLabel = StatsTab:CreateLabel("")
 local UserIdLabel = StatsTab:CreateLabel("")
-local FriendsLabel = StatsTab:CreateLabel("")
 local AccountAgeLabel = StatsTab:CreateLabel("")
 local JoinDateLabel = StatsTab:CreateLabel("")
 
@@ -2902,9 +2904,6 @@ local DeviceLabel = StatsTab:CreateLabel("")
 local RegionLabel = StatsTab:CreateLabel("")
 local PerformanceLabel = StatsTab:CreateLabel("")
 local PlaytimeLabel = StatsTab:CreateLabel("")
-local HumanoidStateLabel = StatsTab:CreateLabel("")
-local WalkSpeedLabel = StatsTab:CreateLabel("")
-local JumpPowerLabel = StatsTab:CreateLabel("")
 local GravityLabel = StatsTab:CreateLabel("")
 local DateTimeLabel = StatsTab:CreateLabel("")
 local ExecutorLabel = StatsTab:CreateLabel("")
@@ -2944,64 +2943,77 @@ local function RefreshStats()
 
 	local Memory = math.floor(StatsService:GetTotalMemoryUsageMb())
 
-	local char = LocalPlayer.Character
 	local velocity = 0
-	local state = "Unknown"
-	local walkspeed = 0
-	local jumppower = 0
-
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		local hrp = char:FindFirstChild("HumanoidRootPart")
-
-		if hum then
-			state = tostring(hum:GetState())
-			walkspeed = hum.WalkSpeed
-			jumppower = hum.JumpPower
-		end
-
-		if hrp then
-			velocity = math.floor(hrp.Velocity.Magnitude)
-		end
+	local char = LocalPlayer.Character
+	if char and char:FindFirstChild("HumanoidRootPart") then
+		velocity = math.floor(char.HumanoidRootPart.Velocity.Magnitude)
 	end
 
-	-- FRIEND COUNT FIX
-	local success, friends = pcall(function()
-		return #LocalPlayer:GetFriendsOnline()
-	end)
-
-	local friendCount = success and friends or 0
-
 	-- USER
-	UserLabel:Set("User: "..LocalPlayer.DisplayName.." (@"..LocalPlayer.Name..")")
-	UserIdLabel:Set("User ID: "..LocalPlayer.UserId)
-	AccountAgeLabel:Set("Account Age: "..LocalPlayer.AccountAge.." days")
-	FriendsLabel:Set("Friends Online: "..friendCount)
-	JoinDateLabel:Set("Account Created: "..GetFullJoinDate())
+	StatsCache.User = "User: "..LocalPlayer.DisplayName.." (@"..LocalPlayer.Name..")"
+	UserLabel:Set(StatsCache.User)
+
+	StatsCache.UserId = "User ID: "..LocalPlayer.UserId
+	UserIdLabel:Set(StatsCache.UserId)
+
+	StatsCache.AccountAge = "Account Age: "..LocalPlayer.AccountAge.." days"
+	AccountAgeLabel:Set(StatsCache.AccountAge)
+
+	StatsCache.Creation = "Account Creation Date: "..AccountCreationDate
+	JoinDateLabel:Set(StatsCache.Creation)
 
 	-- GAME
-	GameLabel:Set("Game: "..GameName)
-	GameIdLabel:Set("Game ID: "..game.PlaceId)
-	ServerLabel:Set("Server ID: "..game.JobId)
-	PlayerCountLabel:Set("Players: "..#Players:GetPlayers())
-	ServerTimeLabel:Set("Server Time: "..math.floor(workspace.DistributedGameTime))
-	JobIdLengthLabel:Set("Job ID Length: "..string.len(game.JobId))
+	StatsCache.Game = "Game: "..GameName
+	GameLabel:Set(StatsCache.Game)
+
+	StatsCache.GameId = "Game ID: "..game.PlaceId
+	GameIdLabel:Set(StatsCache.GameId)
+
+	StatsCache.Server = "Server ID: "..game.JobId
+	ServerLabel:Set(StatsCache.Server)
+
+	StatsCache.Players = "Players: "..#Players:GetPlayers()
+	PlayerCountLabel:Set(StatsCache.Players)
+
+	StatsCache.ServerTime = "Server Time: "..math.floor(workspace.DistributedGameTime)
+	ServerTimeLabel:Set(StatsCache.ServerTime)
+
+	StatsCache.JobLength = "Job ID Length: "..string.len(game.JobId)
+	JobIdLengthLabel:Set(StatsCache.JobLength)
 
 	-- OTHERS
-	FPSLabel:Set("FPS: "..CurrentFPS)
-	PingLabel:Set("Ping: "..Ping.." ms")
-	MemoryLabel:Set("Memory: "..Memory.." MB")
-	VelocityLabel:Set("Velocity: "..velocity)
-	DeviceLabel:Set("Device: "..DeviceType)
-	RegionLabel:Set("Region: "..Region)
-	PerformanceLabel:Set("Performance: "..GetPerformance(CurrentFPS, Ping))
-	PlaytimeLabel:Set("Playtime: "..FormatTime(tick() - JoinTime))
-	HumanoidStateLabel:Set("Humanoid State: "..state)
-	WalkSpeedLabel:Set("WalkSpeed: "..walkspeed)
-	JumpPowerLabel:Set("JumpPower: "..jumppower)
-	GravityLabel:Set("Gravity: "..workspace.Gravity)
-	DateTimeLabel:Set("Date & Time: "..os.date("%d %B %Y | %H:%M:%S"))
-	ExecutorLabel:Set("Executor: "..ExecutorName)
+	StatsCache.FPS = "FPS: "..CurrentFPS
+	FPSLabel:Set(StatsCache.FPS)
+
+	StatsCache.Ping = "Ping: "..Ping.." ms"
+	PingLabel:Set(StatsCache.Ping)
+
+	StatsCache.Memory = "Memory: "..Memory.." MB"
+	MemoryLabel:Set(StatsCache.Memory)
+
+	StatsCache.Velocity = "Velocity: "..velocity
+	VelocityLabel:Set(StatsCache.Velocity)
+
+	StatsCache.Device = "Device: "..DeviceType
+	DeviceLabel:Set(StatsCache.Device)
+
+	StatsCache.Region = "Region: "..Region
+	RegionLabel:Set(StatsCache.Region)
+
+	StatsCache.Performance = "Performance: "..GetPerformance(CurrentFPS, Ping)
+	PerformanceLabel:Set(StatsCache.Performance)
+
+	StatsCache.Playtime = "Playtime: "..FormatTime(tick() - JoinTime)
+	PlaytimeLabel:Set(StatsCache.Playtime)
+
+	StatsCache.Gravity = "Gravity: "..workspace.Gravity
+	GravityLabel:Set(StatsCache.Gravity)
+
+	StatsCache.DateTime = "Date & Time: "..os.date("%d %B %Y | %H:%M:%S")
+	DateTimeLabel:Set(StatsCache.DateTime)
+
+	StatsCache.Executor = "Executor: "..ExecutorName
+	ExecutorLabel:Set(StatsCache.Executor)
 end
 
 --// REFRESH BUTTON
@@ -3010,34 +3022,32 @@ StatsTab:CreateButton({
 	Callback = RefreshStats
 })
 
---// AUTO UPDATE (OPTIMIZED)
+--// AUTO UPDATE (1 SECOND LOOP)
 task.spawn(function()
 	while task.wait(1) do
 		RefreshStats()
 	end
 end)
 
---// COPY ALL
+--// COPY ALL (FULLY FIXED)
 StatsTab:CreateButton({
 	Name = "Copy All",
 	Callback = function()
-		local allText = ""
-		local labels = {
-			UserLabel,UserIdLabel,FriendsLabel,AccountAgeLabel,JoinDateLabel,
-			GameLabel,GameIdLabel,ServerLabel,PlayerCountLabel,ServerTimeLabel,
-			FPSLabel,PingLabel,MemoryLabel,VelocityLabel,DeviceLabel,
-			RegionLabel,PerformanceLabel,PlaytimeLabel,HumanoidStateLabel,
-			WalkSpeedLabel,JumpPowerLabel,GravityLabel,DateTimeLabel,ExecutorLabel
-		}
 
-		for _,v in pairs(labels) do
-			if v and v.Text then
-				allText ..= v.Text .. "\n"
-			end
+		local text = "=== PLAYER STATS ===\n\n"
+
+		for _, value in pairs(StatsCache) do
+			text ..= value .. "\n"
 		end
 
 		if setclipboard then
-			setclipboard(allText)
+			setclipboard(text)
+		elseif toclipboard then
+			toclipboard(text)
+		elseif clipboard_set then
+			clipboard_set(text)
+		else
+			warn("Clipboard not supported.")
 		end
 	end
 })
