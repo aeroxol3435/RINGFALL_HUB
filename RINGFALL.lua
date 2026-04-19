@@ -1,3 +1,5 @@
+getgenv().RAYFIELD_SECURE = false
+
 -- Load Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
@@ -17,8 +19,6 @@ Rayfield:Notify({
 	Content = "by @aeroxol115 in youtube",
 	Duration = 3
 })
-
-getgenv().RAYFIELD_SECURE = false
 
 -- Tabs
 local HomeTab = Window:CreateTab("Home", "home")
