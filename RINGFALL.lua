@@ -2784,6 +2784,7 @@ for i = 1,10 do
 		end
 	})
 end
+
 --// SERVICES
 local Players = game:GetService("Players")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -2791,7 +2792,6 @@ local RunService = game:GetService("RunService")
 local StatsService = game:GetService("Stats")
 local LocalizationService = game:GetService("LocalizationService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 local JoinTime = tick()
@@ -2803,7 +2803,7 @@ pcall(function()
 	GameName = info.Name
 end)
 
---// REGION FULL NAME
+--// REGION
 local Region = "🌍 Unknown"
 pcall(function()
 	local code = LocalizationService:GetCountryRegionForPlayerAsync(LocalPlayer)
@@ -2855,8 +2855,16 @@ local function FormatTime(seconds)
 	return string.format("%dd %02dh %02dm %02ds", d, h, m, s)
 end
 
+--// ACCOUNT CREATION DATE
+local function GetFullJoinDate()
+	local accountAgeDays = LocalPlayer.AccountAge
+	local currentTime = os.time()
+	local creationTimestamp = currentTime - (accountAgeDays * 86400)
+	return os.date("%d %B %Y | %H:%M:%S", creationTimestamp)
+end
+
 --// CREATE TAB
-local StatsTab = Window:CreateTab("Stats", 4483362458)
+local StatsTab = Window:CreateTab("Stats", "bar-chart")
 
 --========================
 -- USER SECTION
@@ -2899,6 +2907,7 @@ local WalkSpeedLabel = StatsTab:CreateLabel("")
 local JumpPowerLabel = StatsTab:CreateLabel("")
 local GravityLabel = StatsTab:CreateLabel("")
 local DateTimeLabel = StatsTab:CreateLabel("")
+local ExecutorLabel = StatsTab:CreateLabel("")
 
 --// FPS SYSTEM
 local Frames = 0
@@ -2928,7 +2937,11 @@ end
 --// REFRESH FUNCTION
 local function RefreshStats()
 
-	local Ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+	local Ping = 0
+	pcall(function()
+		Ping = math.floor(StatsService.Network.ServerStatsItem["Data Ping"]:GetValue())
+	end)
+
 	local Memory = math.floor(StatsService:GetTotalMemoryUsageMb())
 
 	local char = LocalPlayer.Character
@@ -2937,30 +2950,41 @@ local function RefreshStats()
 	local walkspeed = 0
 	local jumppower = 0
 
-	if char and char:FindFirstChild("Humanoid") then
-		local hum = char.Humanoid
-		state = tostring(hum:GetState())
-		walkspeed = hum.WalkSpeed
-		jumppower = hum.JumpPower
+	if char then
+		local hum = char:FindFirstChildOfClass("Humanoid")
+		local hrp = char:FindFirstChild("HumanoidRootPart")
+
+		if hum then
+			state = tostring(hum:GetState())
+			walkspeed = hum.WalkSpeed
+			jumppower = hum.JumpPower
+		end
+
+		if hrp then
+			velocity = math.floor(hrp.Velocity.Magnitude)
+		end
 	end
 
-	if char and char:FindFirstChild("HumanoidRootPart") then
-		velocity = math.floor(char.HumanoidRootPart.Velocity.Magnitude)
-	end
+	-- FRIEND COUNT FIX
+	local success, friends = pcall(function()
+		return #LocalPlayer:GetFriendsOnline()
+	end)
+
+	local friendCount = success and friends or 0
 
 	-- USER
 	UserLabel:Set("User: "..LocalPlayer.DisplayName.." (@"..LocalPlayer.Name..")")
 	UserIdLabel:Set("User ID: "..LocalPlayer.UserId)
 	AccountAgeLabel:Set("Account Age: "..LocalPlayer.AccountAge.." days")
-	FriendsLabel:Set("Friends: "..LocalPlayer:GetFriendsOnline())
-	JoinDateLabel:Set("Join Date: "..os.date("%d %B %Y"))
+	FriendsLabel:Set("Friends Online: "..friendCount)
+	JoinDateLabel:Set("Account Created: "..GetFullJoinDate())
 
 	-- GAME
 	GameLabel:Set("Game: "..GameName)
 	GameIdLabel:Set("Game ID: "..game.PlaceId)
 	ServerLabel:Set("Server ID: "..game.JobId)
 	PlayerCountLabel:Set("Players: "..#Players:GetPlayers())
-	ServerTimeLabel:Set("Server Time: "..workspace.DistributedGameTime)
+	ServerTimeLabel:Set("Server Time: "..math.floor(workspace.DistributedGameTime))
 	JobIdLengthLabel:Set("Job ID Length: "..string.len(game.JobId))
 
 	-- OTHERS
@@ -2977,6 +3001,7 @@ local function RefreshStats()
 	JumpPowerLabel:Set("JumpPower: "..jumppower)
 	GravityLabel:Set("Gravity: "..workspace.Gravity)
 	DateTimeLabel:Set("Date & Time: "..os.date("%d %B %Y | %H:%M:%S"))
+	ExecutorLabel:Set("Executor: "..ExecutorName)
 end
 
 --// REFRESH BUTTON
@@ -2985,22 +3010,30 @@ StatsTab:CreateButton({
 	Callback = RefreshStats
 })
 
---// AUTO UPDATE
-RunService.RenderStepped:Connect(RefreshStats)
+--// AUTO UPDATE (OPTIMIZED)
+task.spawn(function()
+	while task.wait(1) do
+		RefreshStats()
+	end
+end)
 
 --// COPY ALL
 StatsTab:CreateButton({
 	Name = "Copy All",
 	Callback = function()
 		local allText = ""
-		for _,v in pairs({
+		local labels = {
 			UserLabel,UserIdLabel,FriendsLabel,AccountAgeLabel,JoinDateLabel,
 			GameLabel,GameIdLabel,ServerLabel,PlayerCountLabel,ServerTimeLabel,
 			FPSLabel,PingLabel,MemoryLabel,VelocityLabel,DeviceLabel,
 			RegionLabel,PerformanceLabel,PlaytimeLabel,HumanoidStateLabel,
-			WalkSpeedLabel,JumpPowerLabel,GravityLabel,DateTimeLabel
-		}) do
-			allText ..= v.Text .. "\n"
+			WalkSpeedLabel,JumpPowerLabel,GravityLabel,DateTimeLabel,ExecutorLabel
+		}
+
+		for _,v in pairs(labels) do
+			if v and v.Text then
+				allText ..= v.Text .. "\n"
+			end
 		end
 
 		if setclipboard then
