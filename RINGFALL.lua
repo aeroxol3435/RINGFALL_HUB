@@ -3,9 +3,9 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- Window
 local Window = Rayfield:CreateWindow({
-	Name = "AIO Universal",
+	Name = "Ringfall Hub",
     Icon = 100186939056497,
-	LoadingTitle = "AIO Universal",
+	LoadingTitle = "Loading",
 	LoadingSubtitle = "by @aeroxol115 in youtube",
 	ConfigurationSaving = {Enabled = false},
 	KeySystem = false
@@ -13,7 +13,7 @@ local Window = Rayfield:CreateWindow({
 
 -- Notify
 Rayfield:Notify({
-	Title = "AIO Universal",
+	Title = "Creator:",
 	Content = "by @aeroxol115 in youtube",
 	Duration = 3
 })
