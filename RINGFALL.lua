@@ -2396,6 +2396,83 @@ FlingTab:CreateButton({
 	end,
 })
 
+--// SERVICES
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+--// STATE
+getgenv().Flinging = false
+local FlingConnection = nil
+local AngularVelocityObject = nil
+
+--// FUNCTION
+local function StartFling()
+	if Flinging then return end
+	Flinging = true
+	
+	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+	local Humanoid = Character:WaitForChild("Humanoid")
+	local Root = Character:WaitForChild("HumanoidRootPart")
+	
+	-- Create BodyAngularVelocity
+	AngularVelocityObject = Instance.new("BodyAngularVelocity")
+	AngularVelocityObject.MaxTorque = Vector3.new(0, math.huge, 0)
+	AngularVelocityObject.AngularVelocity = Vector3.new(0, 99999, 0)
+	AngularVelocityObject.Parent = Root
+	
+	-- Auto unfling on death
+	FlingConnection = Humanoid.Died:Connect(function()
+		Flinging = false
+	end)
+	
+	-- Loop
+	task.spawn(function()
+		while Flinging and AngularVelocityObject do
+			AngularVelocityObject.AngularVelocity = Vector3.new(0, 99999, 0)
+			task.wait(0.2)
+			AngularVelocityObject.AngularVelocity = Vector3.new(0, 0, 0)
+			task.wait(0.1)
+		end
+	end)
+end
+
+local function StopFling()
+	Flinging = false
+	
+	if FlingConnection then
+		FlingConnection:Disconnect()
+		FlingConnection = nil
+	end
+	
+	if AngularVelocityObject then
+		AngularVelocityObject:Destroy()
+		AngularVelocityObject = nil
+	end
+	
+	local Character = LocalPlayer.Character
+	if Character then
+		for _, part in pairs(Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+			end
+		end
+	end
+end
+
+
+local FlingToggle = FlingTab:CreateToggle({
+	Name = "Fling",
+	CurrentValue = false,
+	Flag = "FlingToggle",
+	Callback = function(Value)
+		if Value then
+			StartFling()
+		else
+			StopFling()
+		end
+	end,
+})
+
 -- =========================
 -- FULL SMART CLICK TO WALK
 -- =========================
