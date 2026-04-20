@@ -2396,32 +2396,54 @@ FlingTab:CreateButton({
 	end,
 })
 
--- === PLACE THIS IN YOUR FLINGTAB (after the tab is created with FlingTab = Window:CreateTab(...)) ===
--- These variables MUST be declared here (outside any function) so they persist across toggle on/off
+-- === ORIGINAL FLING TOGGLE FOR RAYFIELD (Fixed Version) ===
+-- Declare these at the top of the fling section (outside any function)
 local flinging = false
 local flingDied = nil
-local bambam = nil
+local currentBambam = nil   -- renamed to avoid conflict with local variables
 
--- Exact original fling logic (converted to toggle-friendly functions)
--- I kept the repeat/until loop, wait(.2)/wait(.1), and flingDiedF exactly as you pasted
+-- Start Original Fling (exact logic from your script)
 local function startOriginalFling()
     if flinging then return end
     
-    flinging = true
-    
     local speakerChar = speaker.Character
-    if not speakerChar or not getRoot(speakerChar) then 
-        flinging = false
-        return 
+    if not speakerChar or not getRoot(speakerChar) then
+        notify("Fling Error", "Character or Root not found!")
+        return
     end
-    
-    -- Create bambam exactly how most original fling scripts do it (this was missing in my previous version)
+
+    flinging = false  -- reset first like original
+
+    -- Exact physical properties change from your fling command
+    for _, child in pairs(speakerChar:GetDescendants()) do
+        if child:IsA("BasePart") then
+            child.CustomPhysicalProperties = PhysicalProperties.new(100, 0.3, 0.5)
+        end
+    end
+
+    execCmd('noclip')
+    wait(.1)
+
+    -- Create bambam exactly like your original (random name, high P, etc.)
     local root = getRoot(speakerChar)
-    bambam = Instance.new("BodyAngularVelocity")
-    bambam.Name = "BamBam"
-    bambam.MaxTorque = Vector3.new(0, math.huge, 0)
-    bambam.AngularVelocity = Vector3.new(0, 0, 0)
-    bambam.Parent = root
+    currentBambam = Instance.new("BodyAngularVelocity")
+    currentBambam.Name = randomString()
+    currentBambam.Parent = root
+    currentBambam.AngularVelocity = Vector3.new(0, 99999, 0)
+    currentBambam.MaxTorque = Vector3.new(0, math.huge, 0)
+    currentBambam.P = math.huge
+
+    -- Make parts massless + no collide (exact from your script)
+    local Char = speakerChar:GetChildren()
+    for i, v in next, Char do
+        if v:IsA("BasePart") then
+            v.CanCollide = false
+            v.Massless = true
+            v.Velocity = Vector3.new(0, 0, 0)
+        end
+    end
+
+    flinging = true
 
     -- Exact flingDiedF from your script
     local function flingDiedF()
@@ -2432,36 +2454,37 @@ local function startOriginalFling()
         flingDied = speakerChar:FindFirstChildOfClass('Humanoid').Died:Connect(flingDiedF)
     end
 
-    -- EXACT repeat loop from the script you gave (no changes)
+    -- EXACT repeat loop from your original fling
     task.spawn(function()
         repeat
-            if bambam and bambam.Parent then
-                bambam.AngularVelocity = Vector3.new(0, 99999, 0)
+            if currentBambam and currentBambam.Parent then
+                currentBambam.AngularVelocity = Vector3.new(0, 99999, 0)
             end
             wait(.2)
             
-            if bambam and bambam.Parent then
-                bambam.AngularVelocity = Vector3.new(0, 0, 0)
+            if currentBambam and currentBambam.Parent then
+                currentBambam.AngularVelocity = Vector3.new(0, 0, 0)
             end
             wait(.1)
         until flinging == false
     end)
 end
 
--- Exact unfling logic from the script you gave (kept 100% the same)
+-- Stop Original Fling (exact unfling logic from your script)
 local function stopOriginalFling()
     flinging = false
     if flingDied then
         flingDied:Disconnect()
         flingDied = nil
     end
+    
     execCmd('clip')
     wait(.1)
     
     local speakerChar = speaker.Character
     if not speakerChar or not getRoot(speakerChar) then return end
     
-    for i,v in pairs(getRoot(speakerChar):GetChildren()) do
+    for i, v in pairs(getRoot(speakerChar):GetChildren()) do
         if v.ClassName == 'BodyAngularVelocity' then
             v:Destroy()
         end
@@ -2473,14 +2496,14 @@ local function stopOriginalFling()
         end
     end
     
-    bambam = nil
+    currentBambam = nil
 end
 
--- Rayfield Toggle (replaces your old togglefling command)
+-- Rayfield Toggle (this is what you add to the tab)
 local FlingToggle = FlingTab:CreateToggle({
-    Name = "Fling (Original)",
+    Name = "Fling (Original Spin)",
     CurrentValue = false,
-    Flag = "OriginalFlingToggle",
+    Flag = "OriginalFlingToggle",   -- for config saving if you use it
     Callback = function(Value)
         if Value then
             startOriginalFling()
