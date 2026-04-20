@@ -2396,81 +2396,92 @@ FlingTab:CreateButton({
 	end,
 })
 
---// SERVICES
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+-- Original fling variables (make sure these are defined at the top of your script if not already)
+local flinging = false
+local flingDied = nil
+local bambam = nil  -- Assuming you create this BodyAngularVelocity somewhere in 'fling'
 
---// STATE
-getgenv().Flinging = false
-local FlingConnection = nil
-local AngularVelocityObject = nil
+-- The fling function (cleaned and kept exactly as the original logic)
+local function startFling()
+    if flinging then return end
+    flinging = true
 
---// FUNCTION
-local function StartFling()
-	if Flinging then return end
-	Flinging = true
-	
-	local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-	local Humanoid = Character:WaitForChild("Humanoid")
-	local Root = Character:WaitForChild("HumanoidRootPart")
-	
-	-- Create BodyAngularVelocity
-	AngularVelocityObject = Instance.new("BodyAngularVelocity")
-	AngularVelocityObject.MaxTorque = Vector3.new(0, math.huge, 0)
-	AngularVelocityObject.AngularVelocity = Vector3.new(0, 99999, 0)
-	AngularVelocityObject.Parent = Root
-	
-	-- Auto unfling on death
-	FlingConnection = Humanoid.Died:Connect(function()
-		Flinging = false
-	end)
-	
-	-- Loop
-	task.spawn(function()
-		while Flinging and AngularVelocityObject do
-			AngularVelocityObject.AngularVelocity = Vector3.new(0, 99999, 0)
-			task.wait(0.2)
-			AngularVelocityObject.AngularVelocity = Vector3.new(0, 0, 0)
-			task.wait(0.1)
-		end
-	end)
+    -- Create bambam if it doesn't exist (common in fling scripts)
+    local root = getRoot(speaker.Character)
+    if not root then return end
+    
+    bambam = Instance.new("BodyAngularVelocity")
+    bambam.Name = "BamBam"
+    bambam.MaxTorque = Vector3.new(0, math.huge, 0)
+    bambam.AngularVelocity = Vector3.new(0, 0, 0)
+    bambam.Parent = root
+
+    local function flingDiedF()
+        execCmd('unfling')  -- or directly call the unfling logic
+    end
+
+    if speaker.Character and speaker.Character:FindFirstChildOfClass('Humanoid') then
+        flingDied = speaker.Character:FindFirstChildOfClass('Humanoid').Died:Connect(flingDiedF)
+    end
+
+    -- The original repeat loop
+    task.spawn(function()
+        while flinging and speaker.Character and getRoot(speaker.Character) do
+            if bambam and bambam.Parent then
+                bambam.AngularVelocity = Vector3.new(0, 99999, 0)
+            end
+            task.wait(0.2)
+            
+            if bambam and bambam.Parent then
+                bambam.AngularVelocity = Vector3.new(0, 0, 0)
+            end
+            task.wait(0.1)
+        end
+    end)
 end
 
-local function StopFling()
-	Flinging = false
-	
-	if FlingConnection then
-		FlingConnection:Disconnect()
-		FlingConnection = nil
-	end
-	
-	if AngularVelocityObject then
-		AngularVelocityObject:Destroy()
-		AngularVelocityObject = nil
-	end
-	
-	local Character = LocalPlayer.Character
-	if Character then
-		for _, part in pairs(Character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
-			end
-		end
-	end
+-- Unfling function (kept almost exactly as you provided)
+local function stopFling()
+    flinging = false
+    if flingDied then
+        flingDied:Disconnect()
+        flingDied = nil
+    end
+    
+    execCmd('clip')  -- or your no-clip off command
+    
+    task.wait(0.1)
+    
+    local speakerChar = speaker.Character
+    if not speakerChar or not getRoot(speakerChar) then return end
+    
+    for i, v in pairs(getRoot(speakerChar):GetChildren()) do
+        if v.ClassName == 'BodyAngularVelocity' or v.Name == "BamBam" then
+            v:Destroy()
+        end
+    end
+    
+    for _, child in pairs(speakerChar:GetDescendants()) do
+        if child:IsA("BasePart") then
+            child.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5)
+        end
+    end
+    
+    bambam = nil
 end
 
-
+-- Rayfield Toggle in your FlingTab
 local FlingToggle = FlingTab:CreateToggle({
-	Name = "Fling",
-	CurrentValue = false,
-	Flag = "FlingToggle",
-	Callback = function(Value)
-		if Value then
-			StartFling()
-		else
-			StopFling()
-		end
-	end,
+    Name = "Fling (Original)",
+    CurrentValue = false,
+    Flag = "FlingToggle",  -- Unique flag for saving if you use config
+    Callback = function(Value)
+        if Value then
+            startFling()
+        else
+            stopFling()
+        end
+    end,
 })
 
 -- =========================
