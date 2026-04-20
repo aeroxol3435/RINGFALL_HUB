@@ -4,7 +4,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- Window
 local Window = Rayfield:CreateWindow({
 	Name = "Ringfall Hub",
-    Icon = 93708770277447,
+    Icon = 131870309052244,
 	LoadingTitle = "Loading",
 	LoadingSubtitle = "by @aeroxol115 in youtube",
 	ConfigurationSaving = {Enabled = false},
